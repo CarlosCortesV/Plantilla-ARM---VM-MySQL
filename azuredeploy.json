@@ -1,0 +1,253 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0", 
+  "parameters": {
+    "vmName": {
+      "minLength": 3,
+      "maxLength": 24,
+      "type": "String",
+      "metadata": {
+        "description":"Nombre de la VM."
+      }
+    },
+    "adminUsername": {
+      "type": "String",
+      "metadata": {
+        "description": "Nombre admin para máquina virtual."
+      }
+    },
+    "adminPassword": {
+      "minLength": 12,
+      "type": "SecureString", // Para mayor seguridad
+      "metadata": {
+        "description": "Password admin para máquina virtual"
+      }
+    },
+    "location": {
+      "defaultValue": "[resourceGroup().location]", // El recurso heredara por defecto la zona del grupo de recursos
+      "type": "String",
+      "metadata": {
+        "description": "Localización del recurso."
+      }
+    },
+    "vmSize": {
+      "defaultValue": "Standard_B1s",
+      "type": "String",
+      "metadata": {
+        "description": "Tamaño de la familia."
+      }
+    },
+    "privateIPAllocationMethod":{
+      "type": "String",
+      "defaultValue":"Dynamic",
+      "allowedValues": [
+        "Dynamic",
+        "Static"
+      ],
+      "metadata": {
+        "description": "Método de asignación de IP privada (Dynamic o Static)."
+      }
+    },
+    "resourceTags": {
+      "type": "object",
+      "defaultValue": {
+        "Ambiente": "Productivo",
+        "Responsable": "Carlos C"
+      },
+      "metadata": {
+        "description": "Etiquetas"
+      }
+    }
+  },
+  "variables": {
+    "virtualNetworks": "MiRedVirtual",
+    "publicIpAddresses": "MiIPPublica",
+    "addressPrefix": "10.0.0.0/16",
+    "subnetName": "Subnet-1",
+    "subnetPrefix": "10.0.0.0/24",
+    "nSecurityGroups": "miNSG"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/publicIpAddresses",
+      "apiVersion": "2019-02-01",
+      "name": "[variables('publicIpAddresses')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('resourceTags')]",
+      "properties": {
+        "publicIPAllocationMethod": "[parameters('privateIPAllocationMethod')]"
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2019-04-01",
+      "name": "[variables('virtualNetworks')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('resourceTags')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[variables('addressPrefix')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[variables('subnetName')]",
+            "properties": {
+              "addressPrefix": "[variables('subnetPrefix')]"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2021-02-01",
+      "name": "[variables('nSecurityGroups')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('resourceTags')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "AllowSSH",
+            "properties": {
+              "priority": 100,
+              "protocol": "Tcp",
+              "access": "Allow",
+              "direction": "Inbound",
+              "sourceAddressPrefix": "*",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*",
+              "destinationPortRange": "22"
+            }
+          },
+          {
+            "name": "AllowHTTP",
+            "properties": {
+              "priority": 110,
+              "protocol": "Tcp",
+              "access": "Allow",
+              "direction": "Inbound",
+              "sourceAddressPrefix": "*",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*",
+              "destinationPortRange": "80"
+            }
+          },
+          {
+            "name": "AllowHTTPS",
+            "properties": {
+              "priority": 120,
+              "protocol": "Tcp",
+              "access": "Allow",
+              "direction": "Inbound",
+              "sourceAddressPrefix": "*",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*",
+              "destinationPortRange": "443"
+            }
+          },
+          {
+            "name": "AllowCustomPort",
+            "properties": {
+              "priority": 130,
+              "protocol": "Tcp",
+              "access": "Allow",
+              "direction": "Inbound",
+              "sourceAddressPrefix": "*",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*",
+              "destinationPortRange": "57032"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2019-02-01",
+      "name": "MiInterfazDeRed",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('resourceTags')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworks'))]",
+        "[resourceId('Microsoft.Network/publicIpAddresses', variables('publicIpAddresses'))]",
+        "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nSecurityGroups'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "[parameters('privateIPAllocationMethod')]",
+              "subnet": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworks'), variables('subnetName'))]"
+              },
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIpAddresses', variables('publicIpAddresses'))]"
+              }
+            }
+          }
+        ],
+        "networkSecurityGroup": {
+          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nSecurityGroups'))]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2021-04-01",
+      "name": "[parameters('vmName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('resourceTags')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkInterfaces', 'MiInterfazDeRed')]",
+        "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nSecurityGroups'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('vmSize')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "RedHat",
+            "offer": "RHEL",
+            "sku": "7.7",
+            "version": "latest"
+          },
+          "osDisk": {
+            "createOption": "fromImage",
+            "managedDisk": {
+              "storageAccountType": "Standard_LRS"
+            }
+          }, //Creación de un disco adicional
+          "dataDisks": [
+            {
+              "name": "[concat('datadisk_', parameters('vmName'))]",
+              "lun": 0,
+              "createOption": "Empty", 
+              "managedDisk": {
+                "storageAccountType": "Standard_LRS"
+                //Crear un párametro para que implemente el nombre como: datadisk_varaible(Nombre VM)
+              },
+                "diskSizeGB": 128 // Tamaño del disco adicional en GB
+              }
+          ]
+        },
+        
+        "osProfile": {
+          "computerName": "[parameters('vmName')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', 'MiInterfazDeRed')]"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "sqlName":{
+      "type": "String",
+      "metadata": {
+        "description": "Nombre admin para Base de Datos"
+      }
+    },
+    "adminUsername": {
+      "type": "String",
+      "metadata": {
+        "description": "Nombre admin para Base de Datos"
+      }
+    },
+    "adminPassword": {
+      "minLength": 12,
+      "type": "SecureString",
+      "metadata": {
+        "description": "Password admin para Base de Datos"
+      }
+    },
+    "location": {
+      "defaultValue": "[resourceGroup().location]",
+      "type": "String",
+      "metadata": {
+        "description": "Localización del recurso."
+      }
+    },
+    "resourceTags": {
+      "type": "object",
+      "defaultValue": {
+        "Ambiente": "Productivo",
+        "Responsable": "Carlos C"
+      },
+      "metadata": {
+        "description": "Etiquetas"
+      }
+    }
+  },
+  "variables": {
+  },
+  "resources": [
+    {
+      "type": "Microsoft.DBforMySQL/flexibleServers",
+      "apiVersion": "2023-10-01-preview", // Cambiado a una versión admitida
+      "name": "[parameters('sqlName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('resourceTags')]",
+      "sku": {
+        "name": "Standard_D2ads_v5",
+        "tier": "GeneralPurpose"
+      },
+      "properties": {
+        "administratorLogin": "[parameters('adminUsername')]",
+        "administratorLoginPassword": "[parameters('adminPassword')]",
+        "version": "8.0.21", // Versión del motor de base de datos MySQL
+        "storageProfile": {
+          "storageMB": 51200 // Tamaño del almacenamiento en MB para el servidor flexible
+        },
+        "networkProfile": {
+          "publicNetworkAccess": "Enabled" // Habilita el acceso público al servidor flexible
+        },
+        "backup": { // Copia de segutidad con redundancia local y período de rentenció de coía de seguridad de 7 días.
+          "retentionPolicy": {
+            "retentionDays": 7,
+            "weeklyRetention": 4
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.DBforMySQL/flexibleServers/configurations",
+      "apiVersion": "2023-06-30", 
+      "name": "[concat(parameters('sqlName'),'/require_secure_transport')]", 
+      "dependsOn": [
+        "[resourceId('Microsoft.DBforMySQL/flexibleServers', parameters('sqlName'))]"
+      ],
+      "properties": {
+        "value": "OFF", // Deshabilita el require_secure_transport para el certificado SSL
+        "currentValue": "OFF",
+        "source": "user-override"
+      }
+    },
+     {
+      "type": "Microsoft.DBforMySQL/flexibleServers/firewallRules", //Establece las reglas del Firewall para realizar las conexiones.
+      "apiVersion": "2023-06-30",
+      "name": "[concat(parameters('sqlName'),'/FirewallRule1')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.DBforMySQL/flexibleServers', parameters('sqlName'))]"
+      ],
+      "properties": {
+        "startIpAddress": "172.200.243.143",
+        "endIpAddress": "172.200.243.143"
+      }
+    }
+
+  ]
+}
+
+
+
