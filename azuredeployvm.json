@@ -1,4 +1,4 @@
-  {
+{
     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0", 
     "parameters": {
@@ -24,14 +24,14 @@
         }
       },
       "location": {
-        "defaultValue": "[resourceGroup().location]", // El recurso heredara por defecto la zona del grupo de recursos
+        "defaultValue": "EastUS", // El recurso heredara por defecto la zona del grupo de recursos
         "type": "String",
         "metadata": {
           "description": "Localización del recurso."
         }
       },
       "vmSize": {
-        "defaultValue": "Standard_B1s",
+        "defaultValue": "Standard_D4ds_v4",
         "type": "String",
         "metadata": {
           "description": "Tamaño de la familia."
@@ -60,12 +60,12 @@
       }
     },
     "variables": {
-      "virtualNetworks": "MiRedVirtual",
-      "publicIpAddresses": "MiIPPublica",
+      "virtualNetworks": "vnet-srvlinux-prd",
+      "publicIpAddresses": "vm-clubenland-prod-ip",
       "addressPrefix": "10.0.0.0/16",
-      "subnetName": "Subnet-1",
+      "subnetName": "snet-srvlinux-prd",
       "subnetPrefix": "10.0.0.0/24",
-      "nSecurityGroups": "miNSG"
+      "nSecurityGroups": "vm-clubenland-prod-nsg"
     },
     "resources": [
       {
@@ -121,6 +121,19 @@
                 "destinationPortRange": "22"
               }
             },
+                        {
+              "name": "AllowCustomPort",
+              "properties": {
+                "priority": 310,
+                "protocol": "Tcp",
+                "access": "Allow",
+                "direction": "Inbound",
+                "sourceAddressPrefix": "*",
+                "sourcePortRange": "*",
+                "destinationAddressPrefix": "*",
+                "destinationPortRange": "57032"
+              }
+            },
             {
               "name": "AllowHTTP",
               "properties": {
@@ -146,19 +159,6 @@
                 "destinationAddressPrefix": "*",
                 "destinationPortRange": "443"
               }
-            },
-            {
-              "name": "AllowCustomPort",
-              "properties": {
-                "priority": 310,
-                "protocol": "Tcp",
-                "access": "Allow",
-                "direction": "Inbound",
-                "sourceAddressPrefix": "*",
-                "sourcePortRange": "*",
-                "destinationAddressPrefix": "*",
-                "destinationPortRange": "57032"
-              }
             }
           ]
         }
@@ -166,7 +166,7 @@
       {
         "type": "Microsoft.Network/networkInterfaces",
         "apiVersion": "2019-02-01",
-        "name": "MiInterfazDeRed",
+        "name": "vm-clubenland-intred",
         "location": "[parameters('location')]",
         "tags": "[parameters('resourceTags')]",
         "dependsOn": [
@@ -201,7 +201,7 @@
         "location": "[parameters('location')]",
         "tags": "[parameters('resourceTags')]",
         "dependsOn": [
-          "[resourceId('Microsoft.Network/networkInterfaces', 'MiInterfazDeRed')]",
+          "[resourceId('Microsoft.Network/networkInterfaces', 'vm-clubenland-intred')]",
           "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nSecurityGroups'))]"
         ],
         "properties": {
@@ -212,22 +212,25 @@
             "imageReference": {
               "publisher": "RedHat",
               "offer": "RHEL",
-              "sku": "7.7",
-              "version": "latest"
+              "sku": "93-gen2",
+              "version": "latest",
+              "exactVersion": "9.3.2023110915"
             },
             "osDisk": {
               "createOption": "fromImage",
               "managedDisk": {
-                "storageAccountType": "Standard_LRS"
-              }
+                "storageAccountType": "StandardSSD_LRS"
+              },
+              "diskSizeGB": 64, // Tamaño del disco adicional en GB
+              "name": "osdisk-vm-clubgenland-prod" 
             }, //Creación de un disco adicional
             "dataDisks": [
               {
-                "name": "[concat('datadisk_', parameters('vmName'))]",
+                "name": "datadisk-vm-clubgenland-prod",
                 "lun": 0,
                 "createOption": "Empty", 
                 "managedDisk": {
-                  "storageAccountType": "Standard_LRS"
+                  "storageAccountType": "StandardSSD_LRS"
                   //Crear un párametro para que implemente el nombre como: datadisk_varaible(Nombre VM)
                 },
                   "diskSizeGB": 128 // Tamaño del disco adicional en GB
@@ -240,10 +243,17 @@
             "adminUsername": "[parameters('adminUsername')]",
             "adminPassword": "[parameters('adminPassword')]"
           },
+          "securityProfile": { //Inicio seguro
+            "uefiSettings": {
+                "secureBootEnabled": true,
+                "vTpmEnabled": true
+            },
+            "securityType": "TrustedLaunch"
+        },
           "networkProfile": {
             "networkInterfaces": [
               {
-                "id": "[resourceId('Microsoft.Network/networkInterfaces', 'MiInterfazDeRed')]"
+                "id": "[resourceId('Microsoft.Network/networkInterfaces', 'vm-clubenland-intred')]"
               }
             ]
           }
