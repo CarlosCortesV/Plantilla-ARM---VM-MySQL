@@ -1,5 +1,5 @@
 {
-    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#", //Plantilla
     "contentVersion": "1.0.0.0", 
     "parameters": {
       "vmName": {
@@ -24,7 +24,7 @@
         }
       },
       "location": {
-        "defaultValue": "EastUS", // El recurso heredara por defecto la zona del grupo de recursos
+        "defaultValue": "EastUS 2", // El recurso heredara por defecto la zona del grupo de recursos
         "type": "String",
         "metadata": {
           "description": "Localización del recurso."
@@ -48,28 +48,24 @@
           "description": "Método de asignación de IP privada (Dynamic o Static)."
         }
       },
-      "resourceTags": {
+      "resourceTags": { //Tags
         "type": "object",
         "defaultValue": {
-          "Ambiente": "Productivo",
-          "Responsable": "Carlos C"
+          "AMBIENTE": "PRODUCCIÓN",
+          "RESPONSABLE": "Carlos C"
         },
         "metadata": {
           "description": "Etiquetas"
         }
       }
     },
-    "variables": {
-      "virtualNetworks": "vnet-srvlinux-prd",
-      "publicIpAddresses": "vm-clubenland-prod-ip",
-      "addressPrefix": "10.0.0.0/16",
-      "subnetName": "snet-srvlinux-prd",
-      "subnetPrefix": "10.0.0.0/24",
-      "nSecurityGroups": "vm-clubenland-prod-nsg"
+    "variables": { //Variables Globales.
+      "publicIpAddresses": "vm-clubgenland-prod-ip",
+      "nSecurityGroups": "vm-clubgenland-prod-nsg"
     },
     "resources": [
       {
-        "type": "Microsoft.Network/publicIpAddresses",
+        "type": "Microsoft.Network/publicIpAddresses", //IP Pública
         "apiVersion": "2019-02-01",
         "name": "[variables('publicIpAddresses')]",
         "location": "[parameters('location')]",
@@ -79,37 +75,15 @@
         }
       },
       {
-        "type": "Microsoft.Network/virtualNetworks",
-        "apiVersion": "2019-04-01",
-        "name": "[variables('virtualNetworks')]",
-        "location": "[parameters('location')]",
-        "tags": "[parameters('resourceTags')]",
-        "properties": {
-          "addressSpace": {
-            "addressPrefixes": [
-              "[variables('addressPrefix')]"
-            ]
-          },
-          "subnets": [
-            {
-              "name": "[variables('subnetName')]",
-              "properties": {
-                "addressPrefix": "[variables('subnetPrefix')]"
-              }
-            }
-          ]
-        }
-      },
-      {
-        "type": "Microsoft.Network/networkSecurityGroups",
+        "type": "Microsoft.Network/networkSecurityGroups", //NSG
         "apiVersion": "2021-02-01",
         "name": "[variables('nSecurityGroups')]",
         "location": "[parameters('location')]",
         "tags": "[parameters('resourceTags')]",
         "properties": {
-          "securityRules": [
+          "securityRules": [ // Reglas de seguridad de entrada
             {
-              "name": "AllowSSH",
+              "name": "Port_22",
               "properties": {
                 "priority": 300,
                 "protocol": "Tcp",
@@ -122,7 +96,7 @@
               }
             },
                         {
-              "name": "AllowCustomPort",
+              "name": "Port_57032",
               "properties": {
                 "priority": 310,
                 "protocol": "Tcp",
@@ -135,7 +109,7 @@
               }
             },
             {
-              "name": "AllowHTTP",
+              "name": "Port_80",
               "properties": {
                 "priority": 320,
                 "protocol": "Tcp",
@@ -148,7 +122,7 @@
               }
             },
             {
-              "name": "AllowHTTPS",
+              "name": "Port_443",
               "properties": {
                 "priority": 330,
                 "protocol": "Tcp",
@@ -166,11 +140,11 @@
       {
         "type": "Microsoft.Network/networkInterfaces",
         "apiVersion": "2019-02-01",
-        "name": "vm-clubenland-intred",
+        "name": "vm-clubgenland-intred",
         "location": "[parameters('location')]",
         "tags": "[parameters('resourceTags')]",
         "dependsOn": [
-          "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworks'))]",
+          // "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworks'))]",
           "[resourceId('Microsoft.Network/publicIpAddresses', variables('publicIpAddresses'))]",
           "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nSecurityGroups'))]"
         ],
@@ -180,8 +154,8 @@
               "name": "ipconfig1",
               "properties": {
                 "privateIPAllocationMethod": "[parameters('privateIPAllocationMethod')]",
-                "subnet": {
-                  "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworks'), variables('subnetName'))]"
+                "subnet": { //Se emplea el id que mapea el id de la suscrión, el grupo de recursos y recursos de donde proviene la Virtual Network a utilizar.
+                  "id": "/subscriptions/d6ab5289-f31f-41b4-b9ec-415941b1c89f/resourceGroups/rg-srvlinux-prd/providers/Microsoft.Network/virtualNetworks/vnet-srvlinux-prd/subnets/snet-srvlinux-prd"
                 },
                 "publicIPAddress": {
                   "id": "[resourceId('Microsoft.Network/publicIpAddresses', variables('publicIpAddresses'))]"
@@ -195,20 +169,20 @@
         }
       },
       {
-        "type": "Microsoft.Compute/virtualMachines",
+        "type": "Microsoft.Compute/virtualMachines", //Creación de la VM
         "apiVersion": "2021-04-01",
         "name": "[parameters('vmName')]",
         "location": "[parameters('location')]",
         "tags": "[parameters('resourceTags')]",
         "dependsOn": [
-          "[resourceId('Microsoft.Network/networkInterfaces', 'vm-clubenland-intred')]",
+          "[resourceId('Microsoft.Network/networkInterfaces', 'vm-clubgenland-intred')]",
           "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nSecurityGroups'))]"
         ],
         "properties": {
-          "hardwareProfile": {
+          "hardwareProfile": { //Tamaño de la VM
             "vmSize": "[parameters('vmSize')]"
           },
-          "storageProfile": {
+          "storageProfile": { //Sistema Operativo
             "imageReference": {
               "publisher": "RedHat",
               "offer": "RHEL",
@@ -221,24 +195,22 @@
               "managedDisk": {
                 "storageAccountType": "StandardSSD_LRS"
               },
-              "diskSizeGB": 64, // Tamaño del disco adicional en GB
+              "diskSizeGB": 64,
               "name": "osdisk-vm-clubgenland-prod" 
-            }, //Creación de un disco adicional
-            "dataDisks": [
+            }, 
+            "dataDisks": [ //Creación de un disco adicional
               {
                 "name": "datadisk-vm-clubgenland-prod",
                 "lun": 0,
                 "createOption": "Empty", 
                 "managedDisk": {
                   "storageAccountType": "StandardSSD_LRS"
-                  //Crear un párametro para que implemente el nombre como: datadisk_varaible(Nombre VM)
                 },
                   "diskSizeGB": 128 // Tamaño del disco adicional en GB
                 }
             ]
-          },
-          
-          "osProfile": {
+          },       
+          "osProfile": { //Crear el perfil en el sistema de la VM
             "computerName": "[parameters('vmName')]",
             "adminUsername": "[parameters('adminUsername')]",
             "adminPassword": "[parameters('adminPassword')]"
@@ -251,9 +223,9 @@
             "securityType": "TrustedLaunch"
         },
           "networkProfile": {
-            "networkInterfaces": [
+            "networkInterfaces": [ //Utiliza la interfaz de red para la VM
               {
-                "id": "[resourceId('Microsoft.Network/networkInterfaces', 'vm-clubenland-intred')]"
+                "id": "[resourceId('Microsoft.Network/networkInterfaces', 'vm-clubgenland-intred')]"
               }
             ]
           }
