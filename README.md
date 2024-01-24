@@ -48,7 +48,10 @@ Connect-AzAccount
 
 ## 2. Despligue 
 
-az deployment group create --resource-group rg-mercadeo-001 --template-file azuredeployvm.json --parameters "{'vmName':{'value':'vm-clubgenland-prod'}}" "{'adminUsername':{'value':'carlos'}}" "{'adminPassword':{'value':'Cualquiercosa2020*'}}" "{'existingVirtualNetworkName':{'value':'vnet-srvlinux-prd'}}" --output json --debug 
+az deployment group create --resource-group rg-mercadeo-001 --template-file azuredeployvm.json --parameters "{'vmName':{'value':'vm-clubgenland-prd'}}" "{'adminUsername':{'value':'usuario'}}" "{'adminPassword':{'value':'password'}}" --output json --debug 
+
+## Despligue VM de pruebas
+az deployment group create --resource-group rg-mercadeo-001 --template-file azuredeployvmtest.json --parameters "{'vmName':{'value':'vm-clubgenland-test'}}" "{'adminUsername':{'value':'usuario'}}" "{'adminPassword':{'value':'password'}}" --output json --debug
 
 
 ## Parámetros

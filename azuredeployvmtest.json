@@ -31,7 +31,7 @@
         }
       },
       "vmSize": {
-        "defaultValue": "Standard_D4ds_v4",
+        "defaultValue": "Standard_D2as_v4",
         "type": "String",
         "metadata": {
           "description": "Tamaño de la familia."
@@ -51,7 +51,7 @@
       "resourceTags": { //Tags
         "type": "object",
         "defaultValue": {
-          "AMBIENTE": "PRODUCCIÓN",
+          "AMBIENTE": "PRUEBAS",
           "RESPONSABLE": "CARLOS C"
         },
         "metadata": {
@@ -60,8 +60,8 @@
       }
     },
     "variables": { //Variables Globales.
-      "publicIpAddresses": "vm-clubgenland-prd-ip",
-      "nSecurityGroups": "vm-clubgenland-prd-nsg"
+      "publicIpAddresses": "vm-clubgenland-test-ip",
+      "nSecurityGroups": "vm-clubgenland-test-nsg"
     },
     "resources": [
       {
@@ -140,7 +140,7 @@
       {
         "type": "Microsoft.Network/networkInterfaces",
         "apiVersion": "2019-02-01",
-        "name": "vm-clubgenland-prd-nic",
+        "name": "vm-clubgenland-test-nic",
         "location": "[parameters('location')]",
         "tags": "[parameters('resourceTags')]",
         "dependsOn": [
@@ -175,7 +175,7 @@
         "location": "[parameters('location')]",
         "tags": "[parameters('resourceTags')]",
         "dependsOn": [
-          "[resourceId('Microsoft.Network/networkInterfaces', 'vm-clubgenland-prd-nic')]",
+          "[resourceId('Microsoft.Network/networkInterfaces', 'vm-clubgenland-test-nic')]",
           "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nSecurityGroups'))]"
         ],
         "properties": {
@@ -196,11 +196,11 @@
                 "storageAccountType": "StandardSSD_LRS"
               },
               "diskSizeGB": 64,
-              "name": "osdisk-vm-clubgenland-prd" 
+              "name": "osdisk-vm-clubgenland-test" 
             }, 
             "dataDisks": [ //Creación de un disco adicional
               {
-                "name": "datadisk-vm-clubgenland-prd",
+                "name": "datadisk-vm-clubgenland-test",
                 "lun": 0,
                 "createOption": "Empty", 
                 "managedDisk": {
@@ -225,7 +225,7 @@
           "networkProfile": {
             "networkInterfaces": [ //Utiliza la interfaz de red para la VM
               {
-                "id": "[resourceId('Microsoft.Network/networkInterfaces', 'vm-clubgenland-prd-nic')]"
+                "id": "[resourceId('Microsoft.Network/networkInterfaces', 'vm-clubgenland-test-nic')]"
               }
             ]
           }
